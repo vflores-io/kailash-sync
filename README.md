@@ -136,3 +136,62 @@ After syncing, review any CLAUDE.md differences flagged in the output and merge 
 | `rs` | `terrene-foundation/kailash-coc-claude-rs` | Rust-backed Python/Ruby projects |
 
 Both variants use the same `sync-kailash.sh` script — only the config (upstream URL and directory list) differs.
+
+## Quick Start Prompt for Claude Code
+
+Copy one of these into a fresh Claude Code session to have it set up a new project for you. Replace `my-project` with your actual project name.
+
+**Python variant:**
+
+```
+I want to start a new Kailash project called "my-project" using the Python COC template.
+
+Follow these steps exactly:
+
+1. Clone the template and reinitialize git:
+   git clone https://github.com/terrene-foundation/kailash-coc-claude-py.git my-project
+   cd my-project
+   rm -rf .git && git init && git branch -m main
+   git add -A && git commit -m "chore: init from kailash-coc-claude-py template"
+
+2. Attach the sync workflow (this keeps the COC template updatable):
+   curl -sSL https://raw.githubusercontent.com/vflores-io/kailash-sync/main/setup.sh | bash -s -- py
+
+3. Edit CLAUDE.md — strip the TODOs and replace the project name/description placeholders with "my-project". Keep all Kailash directives, SDK docs, and framework references intact.
+
+4. Edit pyproject.toml — replace the project name, description, and author placeholders.
+
+5. Copy .env.example to .env and remind me to fill in API keys.
+
+After setup, show me the project structure and confirm everything is wired up.
+```
+
+**Rust variant:**
+
+```
+I want to start a new Kailash project called "my-project" using the Rust-backed COC template.
+
+Follow these steps exactly:
+
+1. Clone the template and reinitialize git:
+   git clone https://github.com/terrene-foundation/kailash-coc-claude-rs.git my-project
+   cd my-project
+   rm -rf .git && git init && git branch -m main
+   git add -A && git commit -m "chore: init from kailash-coc-claude-rs template"
+
+2. Attach the sync workflow (this keeps the COC template updatable):
+   curl -sSL https://raw.githubusercontent.com/vflores-io/kailash-sync/main/setup.sh | bash -s -- rs
+
+3. Edit CLAUDE.md — strip the TODOs and replace the project name/description placeholders with "my-project". Keep all Kailash directives, SDK docs, and framework references intact.
+
+4. Edit pyproject.toml — replace the project name, description, and author placeholders.
+
+5. Copy .env.example to .env and remind me to fill in API keys.
+
+After setup, show me the project structure and confirm everything is wired up.
+```
+
+To update an existing project later, just run:
+```
+./sync-kailash.sh --pull --apply
+```
