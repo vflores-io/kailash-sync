@@ -84,6 +84,15 @@ These directories are overwritten with the latest upstream versions:
 **Python-only:** `sdk-users/`, `mcp-configs/`, `instructions/`
 **Rust-only:** `spec/`
 
+### Package versions (updated in pyproject.toml)
+
+The sync also checks Kailash package versions in your `pyproject.toml` against upstream:
+
+**Python variant** updates: `kailash`, `kailash-nexus`, `kailash-dataflow`, `kailash-kaizen`, `kailash-pact`
+**Rust variant** updates: `kailash-enterprise`
+
+Only the version pins are updated — your project name, description, and non-Kailash dependencies are never touched. New packages that appear upstream are flagged for manual addition.
+
 ### Protected (never overwritten)
 
 | Path | Why |

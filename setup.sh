@@ -192,6 +192,54 @@ for mapping in "${FILES[@]}"; do
   fi
 done
 
+# Sync Kailash package versions in pyproject.toml
+if [ -f "${SUBTREE_DIR}/pyproject.toml" ] && [ -f "pyproject.toml" ]; then
+  echo ""
+  echo "--- pyproject.toml (Kailash package versions) ---"
+
+  # Extract kailash dependency lines from upstream
+  UPSTREAM_DEPS=$(grep -E '^\s+"kailash' "${SUBTREE_DIR}/pyproject.toml" | sed 's/^[[:space:]]*//' | tr -d '",' || true)
+
+  if [ -n "$UPSTREAM_DEPS" ]; then
+    PKG_CHANGES=false
+    while IFS= read -r upstream_line; do
+      # Extract package name (everything before >= or ==)
+      pkg_name=$(echo "$upstream_line" | sed 's/[>=<].*//' | xargs)
+
+      # Find current version in project pyproject.toml
+      current_line=$(grep -E "^\s+\"${pkg_name}[>=<\[]" "pyproject.toml" 2>/dev/null | sed 's/^[[:space:]]*//' | tr -d '",' || true)
+
+      if [ -n "$current_line" ] && [ "$current_line" != "$upstream_line" ]; then
+        PKG_CHANGES=true
+        if $APPLY; then
+          # Escape for sed: handle brackets and special chars
+          escaped_current=$(printf '%s\n' "$current_line" | sed 's/[][\\/.^$*]/\\&/g')
+          escaped_upstream=$(printf '%s\n' "$upstream_line" | sed 's/[&/\\]/\\&/g')
+          sed -i '' "s/${escaped_current}/${escaped_upstream}/" "pyproject.toml" 2>/dev/null || \
+          sed -i "s/${escaped_current}/${escaped_upstream}/" "pyproject.toml" 2>/dev/null || \
+          echo "  ⚠ Could not auto-update $pkg_name — update manually"
+          echo "  updated: $current_line -> $upstream_line"
+        else
+          echo "  would update: $current_line -> $upstream_line"
+        fi
+      elif [ -z "$current_line" ]; then
+        PKG_CHANGES=true
+        if $APPLY; then
+          echo "  ⚠ New package: $upstream_line — add to pyproject.toml manually"
+        else
+          echo "  new package (not in project): $upstream_line"
+        fi
+      fi
+    done <<< "$UPSTREAM_DEPS"
+
+    if $PKG_CHANGES; then
+      CHANGES_FOUND=true
+    else
+      echo "  All Kailash packages up to date."
+    fi
+  fi
+fi
+
 # Always show CLAUDE.md diff but never auto-sync it
 if [ -f "${SUBTREE_DIR}/CLAUDE.md" ] && [ -f "CLAUDE.md" ]; then
   if ! diff -q "${SUBTREE_DIR}/CLAUDE.md" "CLAUDE.md" > /dev/null 2>&1; then
