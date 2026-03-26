@@ -311,6 +311,16 @@ SYNC_FILES=".claude/settings.json:.claude/settings.json,workspaces/README.md:wor
 RSCONF
 fi
 
+# --- Install /sync-kailash slash command ---
+
+echo "==> Installing /sync-kailash command..."
+CMD_DIR=".claude/commands"
+mkdir -p "$CMD_DIR"
+curl -sSL "https://raw.githubusercontent.com/vflores-io/kailash-sync/main/sync-kailash.md" \
+  -o "$CMD_DIR/sync-kailash.md" 2>/dev/null || {
+  echo "  ⚠ Could not download command file. You can add it manually later."
+}
+
 # --- Install check-kailash-updates hook ---
 
 echo "==> Installing check-kailash-updates hook..."
@@ -354,7 +364,7 @@ fi
 # --- Commit ---
 
 echo "==> Committing sync workflow setup..."
-git add sync-kailash.sh .sync-kailash.conf "$HOOK_DIR/check-kailash-updates.js" 2>/dev/null
+git add sync-kailash.sh .sync-kailash.conf "$HOOK_DIR/check-kailash-updates.js" "$CMD_DIR/sync-kailash.md" 2>/dev/null
 git add sync-kailash.sh .sync-kailash.conf
 git commit -m "chore: add sync workflow for upstream COC template updates
 
