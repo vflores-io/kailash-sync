@@ -311,9 +311,50 @@ SYNC_FILES=".claude/settings.json:.claude/settings.json,workspaces/README.md:wor
 RSCONF
 fi
 
+# --- Install check-kailash-updates hook ---
+
+echo "==> Installing check-kailash-updates hook..."
+
+# Download the hook script from kailash-sync repo
+HOOK_DIR="scripts/hooks"
+mkdir -p "$HOOK_DIR"
+curl -sSL "https://raw.githubusercontent.com/vflores-io/kailash-sync/main/check-kailash-updates.js" \
+  -o "$HOOK_DIR/check-kailash-updates.js" 2>/dev/null || {
+  echo "  ⚠ Could not download hook script. You can add it manually later."
+}
+
+if [ -f "$HOOK_DIR/check-kailash-updates.js" ]; then
+  # Wire up the hook in settings.json
+  node -e "
+const fs = require('fs');
+const settingsPath = '.claude/settings.json';
+if (!fs.existsSync(settingsPath)) { process.exit(0); }
+const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+
+if (!settings.hooks) settings.hooks = {};
+if (!settings.hooks.SessionStart) settings.hooks.SessionStart = [{ hooks: [] }];
+
+const sessionStart = settings.hooks.SessionStart[0].hooks;
+const hasHook = sessionStart.some(h => h.command && h.command.includes('check-kailash-updates'));
+
+if (!hasHook) {
+  sessionStart.push({
+    type: 'command',
+    command: 'node \"\\\$CLAUDE_PROJECT_DIR/scripts/hooks/check-kailash-updates.js\"',
+    timeout: 10
+  });
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+  console.log('  Added check-kailash-updates hook to SessionStart');
+} else {
+  console.log('  Hook already configured');
+}
+" 2>/dev/null || echo "  ⚠ Could not wire up hook (Node.js required). Add manually."
+fi
+
 # --- Commit ---
 
 echo "==> Committing sync workflow setup..."
+git add sync-kailash.sh .sync-kailash.conf "$HOOK_DIR/check-kailash-updates.js" 2>/dev/null
 git add sync-kailash.sh .sync-kailash.conf
 git commit -m "chore: add sync workflow for upstream COC template updates
 
