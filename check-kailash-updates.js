@@ -1,21 +1,20 @@
 #!/usr/bin/env node
-// check-kailash-updates.js — SessionStart hook that checks if upstream COC template has updates
-//
-// Reads .sync-kailash.conf for the upstream repo URL, compares the latest
-// upstream commit with the local kailash-setup subtree's last merge commit.
-// If they differ, prints a reminder to sync.
+/**
+ * SessionStart hook: Check if kailash-setup subtree has upstream updates available.
+ * Does NOT auto-sync — just notifies the user so they can run ./sync-kailash.sh
+ * Reads upstream URL from .sync-kailash.conf (works for both py and rs variants).
+ */
 
 const { execSync } = require("child_process");
-const fs = require("fs");
 const path = require("path");
+const fs = require("fs");
 
-const projectDir =
-  process.env.CLAUDE_PROJECT_DIR || process.cwd();
-const confPath = path.join(projectDir, ".sync-kailash.conf");
+const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const subtreeDir = path.join(projectDir, "kailash-setup");
+const confPath = path.join(projectDir, ".sync-kailash.conf");
 
-// Skip if sync workflow not set up
-if (!fs.existsSync(confPath) || !fs.existsSync(subtreeDir)) {
+// Skip if subtree or config doesn't exist
+if (!fs.existsSync(subtreeDir) || !fs.existsSync(confPath)) {
   process.exit(0);
 }
 
@@ -28,41 +27,57 @@ if (!match) {
 const upstreamUrl = match[1];
 
 try {
-  // Get latest upstream commit (network call — may fail offline, that's OK)
-  const remoteHead = execSync(
-    `git ls-remote ${upstreamUrl} refs/heads/main 2>/dev/null`,
-    { encoding: "utf-8", timeout: 10000 }
-  )
-    .trim()
-    .split(/\s/)[0];
+  // Fetch latest from upstream (quiet, no merge)
+  execSync(`git fetch ${upstreamUrl} main --quiet`, {
+    cwd: projectDir,
+    timeout: 15000,
+    stdio: "pipe",
+  });
 
-  if (!remoteHead) {
-    process.exit(0);
-  }
+  // Check if FETCH_HEAD differs from what we have in the subtree
+  const fetchHead = execSync("git rev-parse FETCH_HEAD", {
+    cwd: projectDir,
+    encoding: "utf-8",
+    stdio: "pipe",
+  }).trim();
 
-  // Get the last subtree merge commit hash
-  const localHead = execSync(
-    `git log -1 --format=%H -- kailash-setup/ 2>/dev/null`,
-    { encoding: "utf-8", cwd: projectDir }
+  // Get the last subtree merge commit
+  const subtreeLog = execSync(
+    'git log --oneline --all --grep="kailash-setup" -1 --format="%H"',
+    { cwd: projectDir, encoding: "utf-8", stdio: "pipe" },
   ).trim();
 
-  // Get the squash-merged upstream hash from the subtree merge commit message
-  const mergeMsg = execSync(
-    `git log -1 --format=%B -- kailash-setup/ 2>/dev/null`,
-    { encoding: "utf-8", cwd: projectDir }
-  ).trim();
+  if (fetchHead && subtreeLog) {
+    // Check if there are new commits upstream since our last pull
+    const behindCount = execSync(
+      `git rev-list --count ${subtreeLog}..FETCH_HEAD 2>/dev/null || echo "0"`,
+      { cwd: projectDir, encoding: "utf-8", stdio: "pipe" },
+    ).trim();
 
-  // If the remote HEAD appears in our last merge message, we're up to date
-  if (mergeMsg.includes(remoteHead.substring(0, 12))) {
-    // Up to date — say nothing
-    process.exit(0);
+    const count = parseInt(behindCount, 10);
+    if (count > 0) {
+      console.log(
+        JSON.stringify({
+          result: "warn",
+          message: [
+            `Kailash COC template has ${count} upstream update(s) available.`,
+            ``,
+            `ACTION REQUIRED — Do the following BEFORE starting any other work:`,
+            `1. Run: ./sync-kailash.sh --pull --apply`,
+            `2. Read the changed files in .claude/agents/, .claude/rules/, .claude/skills/, and scripts/hooks/ to understand what is new`,
+            `3. Summarize the updates to the user: what changed, what new capabilities are available, and whether a session restart is needed`,
+            `4. Commit the synced files with: chore: sync kailash-setup upstream updates`,
+            `5. A restart is needed if CLAUDE.md, .claude/settings.json, or .claude/rules/ changed`,
+          ].join("\n"),
+        }),
+      );
+      process.exit(0);
+    }
   }
 
-  // Updates available
-  console.log(
-    `[kailash-sync] Upstream COC template has updates. Run: ./sync-kailash.sh --pull --apply`
-  );
-} catch (e) {
-  // Network error, git error, offline — silently skip
-  process.exit(0);
+  // Up to date or couldn't determine — silent success
+  console.log(JSON.stringify({ result: "success", message: "" }));
+} catch (err) {
+  // Network errors, git errors — don't block the session, just skip
+  console.log(JSON.stringify({ result: "success", message: "" }));
 }
