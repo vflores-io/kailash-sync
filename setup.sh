@@ -234,6 +234,11 @@ if [ -f "${SUBTREE_DIR}/pyproject.toml" ] && [ -f "pyproject.toml" ]; then
 
     if $PKG_CHANGES; then
       CHANGES_FOUND=true
+      if $APPLY; then
+        echo ""
+        echo "==> Running uv sync to update venv..."
+        uv sync 2>&1 | tail -10
+      fi
     else
       echo "  All Kailash packages up to date."
     fi
