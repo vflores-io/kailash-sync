@@ -311,34 +311,6 @@ SYNC_FILES=".claude/settings.json:.claude/settings.json,workspaces/README.md:wor
 RSCONF
 fi
 
-# --- Wire up session-start hook ---
-
-echo "==> Wiring up update-check hook..."
-node -e "
-const fs = require('fs');
-const path = '.claude/settings.json';
-if (!fs.existsSync(path)) { console.log('⚠ No settings.json found, skipping hook setup'); process.exit(0); }
-const settings = JSON.parse(fs.readFileSync(path, 'utf-8'));
-
-if (!settings.hooks) settings.hooks = {};
-if (!settings.hooks.SessionStart) settings.hooks.SessionStart = [{ matcher: '', hooks: [] }];
-
-const sessionStart = settings.hooks.SessionStart[0].hooks;
-const hasHook = sessionStart.some(h => h.command && h.command.includes('check-kailash-updates'));
-
-if (!hasHook) {
-  sessionStart.push({
-    type: 'command',
-    command: 'node \"\$CLAUDE_PROJECT_DIR/scripts/hooks/check-kailash-updates.js\"',
-    timeout: 20
-  });
-  fs.writeFileSync(path, JSON.stringify(settings, null, 2) + '\n');
-  console.log('  Added check-kailash-updates hook to SessionStart');
-} else {
-  console.log('  Update hook already configured');
-}
-" 2>/dev/null || echo "  ⚠ Could not wire up hook automatically (Node.js required). Add manually."
-
 # --- Commit ---
 
 echo "==> Committing sync workflow setup..."
