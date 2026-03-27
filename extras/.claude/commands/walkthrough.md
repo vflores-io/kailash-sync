@@ -1,3 +1,8 @@
+---
+name: walkthrough
+description: "Force a complete click-through of every screen before /redteam can proceed."
+---
+
 ## User Flow Walkthrough (Mandatory before /redteam)
 
 This command forces a complete click-through of every screen, every nav item, every link, and every button — documenting what the user sees and what they can do next at each step. No feature is "done" until this walkthrough passes.
