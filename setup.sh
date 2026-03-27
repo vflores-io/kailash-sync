@@ -361,10 +361,19 @@ if (!hasHook) {
 " 2>/dev/null || echo "  ⚠ Could not wire up hook (Node.js required). Add manually."
 fi
 
+# --- Apply extras (walkthrough gate, updated redteam, zero-tolerance Rule 7) ---
+
+echo "==> Applying kailash-sync extras..."
+EXTRAS_URL="https://raw.githubusercontent.com/vflores-io/kailash-sync/main"
+for f in ".claude/commands/walkthrough.md" ".claude/commands/redteam.md" ".claude/rules/zero-tolerance.md"; do
+  mkdir -p "$(dirname "$f")"
+  curl -sSL "$EXTRAS_URL/extras/$f" -o "$f" 2>/dev/null && echo "  ✓ $f" || echo "  ⚠ Could not download $f"
+done
+
 # --- Commit ---
 
 echo "==> Committing sync workflow setup..."
-git add sync-kailash.sh .sync-kailash.conf "$HOOK_DIR/check-kailash-updates.js" "$CMD_DIR/sync-kailash.md" 2>/dev/null
+git add sync-kailash.sh .sync-kailash.conf "$HOOK_DIR/check-kailash-updates.js" "$CMD_DIR/sync-kailash.md" .claude/commands/walkthrough.md .claude/commands/redteam.md .claude/rules/zero-tolerance.md 2>/dev/null
 git add sync-kailash.sh .sync-kailash.conf
 git commit -m "chore: add sync workflow for upstream COC template updates
 
